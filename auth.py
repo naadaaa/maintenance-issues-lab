@@ -1,5 +1,5 @@
 def check_password(pw):
-    if len(pw) > 30:
+    if len(pw) < 8:
         return False
     if pw.lower() == "password":
         return False
