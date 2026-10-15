@@ -1,17 +1,3 @@
-#!/usr/bin/env python3
-"""
-szz_tracer.py - Automated SZZ tracer (SWAPD 451, Lab 3)
-
-For a bug-fixing commit (BFC):
-  1. Use PyDriller to extract the lines the fix DELETED / MODIFIED (old-side lines).
-  2. Run `git blame` on the BFC's PARENT for each of those lines
-     (a) normal blame            -> candidate bug-inducing commits (BIC)
-     (b) blame -C -C             -> same, but follows code moved/copied across files
-  3. Rank candidates and print a Markdown table.
-
-Usage:
-    python szz_tracer.py <repo_path> <bfc_hash> [--out results.json]
-"""
 import argparse
 import json
 import re
@@ -25,19 +11,17 @@ COMMENT_RE = re.compile(r"^\s*(//|#|/\*|\*|<!--|-->|\*/)")
 
 
 def is_meaningful(text: str) -> bool:
-    """Skip blank lines and comment-only lines (standard SZZ noise filter)."""
     s = text.strip()
     return bool(s) and not COMMENT_RE.match(s)
 
 
 def extract_deleted_lines(repo_path, bfc_hash):
-    """Return (commit, {old_path: [(old_line_no, text), ...]}, added_count)."""
     result, added = {}, 0
     commit = None
     for commit in Repository(repo_path, single=bfc_hash).traverse_commits():
         for mod in commit.modified_files:
             added += mod.added_lines
-            if mod.old_path is None:          # brand-new file: nothing to trace
+            if mod.old_path is None:
                 continue
             parsed = mod.diff_parsed
             lines = [(n, t) for n, t in parsed["deleted"] if is_meaningful(t)]
@@ -50,11 +34,6 @@ _CACHE = {}
 
 
 def blame_file(repo_path, parent, path, copy_detect=False):
-    """Blame the WHOLE file at `parent` and return {line_no: (hash, origin_file, origin_line)}.
-
-    Whole-file blame is needed: `-C -C` only detects moved/copied code when it
-    sees a big enough block (about 40 characters), so blaming single lines with -L misses moves.
-    """
     key = (parent, path, copy_detect)
     if key in _CACHE:
         return _CACHE[key]
@@ -78,7 +57,6 @@ def blame_file(repo_path, parent, path, copy_detect=False):
 
 
 def blame_line(repo_path, parent, path, line_no, copy_detect=False):
-    """Blame result for one line: (short_hash, origin_file, origin_line)."""
     return blame_file(repo_path, parent, path, copy_detect)[line_no]
 
 
